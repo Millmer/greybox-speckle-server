@@ -12,6 +12,13 @@ services:
     environment:
       FILE_SIZE_LIMIT_MB: '100'
       NGINX_ENVSUBST_OUTPUT_DIR: '/etc/nginx'
+    labels:
+    - "traefik.enable=true"
+    #TODO: replace `example.com` with your domain. This should just be the domain, and do not include the protocol (http/https).
+    - "traefik.http.routers.speckle-ingress.rule=Host(`greybox.milmer.dev`)"
+    - "traefik.http.routers.speckle-ingress.entrypoints=websecure"
+    - "traefik.http.routers.speckle-ingress.tls.certresolver=myresolver"
+    - "traefik.http.services.speckle-ingress.loadbalancer.server.port=8080"
 
   speckle-frontend-2:
     build:
@@ -22,8 +29,8 @@ services:
     restart: always
     environment:
       NUXT_PUBLIC_SERVER_NAME: 'local'
-      NUXT_PUBLIC_API_ORIGIN: 'http://127.0.0.1'
-      NUXT_PUBLIC_BASE_URL: 'http://127.0.0.1'
+      NUXT_PUBLIC_API_ORIGIN: 'https://greybox.milmer.dev'
+      NUXT_PUBLIC_BASE_URL: 'https://greybox.milmer.dev'
       NUXT_PUBLIC_BACKEND_API_ORIGIN: 'http://speckle-server:3000'
       NUXT_PUBLIC_LOG_LEVEL: 'warn'
       NUXT_REDIS_URL: 'redis://redis'
@@ -47,10 +54,10 @@ services:
       start_period: 90s
     environment:
       # TODO: Change this to the URL of the speckle server, as accessed from the network
-      CANONICAL_URL: 'http://127.0.0.1'
+      CANONICAL_URL: 'https://greybox.milmer.dev'
 
       # TODO: Change this to a unique secret for this server
-      SESSION_SECRET: 'TODO:Replace'
+      SESSION_SECRET: 'GreyboxSpeckleSuperSecret'
 
       STRATEGY_LOCAL: 'true'
       LOG_LEVEL: 'info'
@@ -72,7 +79,7 @@ services:
       EMAIL_FROM: 'no-reply@example.org'
 
       USE_FRONTEND_2: true
-      FRONTEND_ORIGIN: 'http://127.0.0.1'
+      FRONTEND_ORIGIN: 'https://greybox.milmer.dev'
       ONBOARDING_STREAM_URL: 'https://latest.speckle.systems/projects/843d07eb10'
 
   preview-service:
@@ -114,3 +121,29 @@ services:
       PG_CONNECTION_STRING: 'postgres://speckle:speckle@postgres/speckle'
       SPECKLE_SERVER_URL: 'http://speckle-server:3000'
       FILE_IMPORT_TIME_LIMIT_MIN: 10
+
+  reverse-proxy:
+    image: traefik:v2.10
+    restart: always
+    command:
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.websecure.address=:443"
+      - "--certificatesresolvers.myresolver.acme.tlschallenge=true"
+      # To use Let's Encrypt staging server instead of production, uncomment the following line
+      #- "--certificatesresolvers.myresolver.acme.caserver=https://acme-staging-v02.api.letsencrypt.org/directory"
+      # TODO: replace `{your@example.com}` with your actual email
+      - "--certificatesresolvers.myresolver.acme.email=james@milmer.dev"
+      - "--certificatesresolvers.myresolver.acme.storage=/letsencrypt/acme.json"
+      # To enable the Traefik web UI (enabled by --api.insecure=true); this is not recommended as it will expose the Traefik dashboard to the internet
+      #- "--api.insecure=true"
+
+    ports:
+      # The HTTPS port (required for Traefik to listen to HTTPS requests)
+      - "443:443"
+      # The Traefik Web UI port if enabled by --api.insecure=true
+      - "8080:8080"
+    volumes:
+      - "./letsencrypt:/letsencrypt"
+      # So that Traefik can listen to the Docker events
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
