@@ -7,8 +7,7 @@ services:
     platform: linux/aarch64
     image: speckle/speckle-docker-compose-ingress:local
     restart: always
-    ports:
-      - '0.0.0.0:80:8080'
+    ports: []
     environment:
       FILE_SIZE_LIMIT_MB: '100'
       NGINX_ENVSUBST_OUTPUT_DIR: '/etc/nginx'
