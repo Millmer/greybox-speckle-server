@@ -42,31 +42,6 @@ services:
       - '127.0.0.1:1080:1080'
       - '127.0.0.1:1025:1025'
 
-  # Useful for debugging / exploring local databases
-
-  pgadmin:
-    image: dpage/pgadmin4
-    restart: always
-    environment:
-      PGADMIN_DEFAULT_EMAIL: admin@localhost.com
-      PGADMIN_DEFAULT_PASSWORD: admin
-    volumes:
-      - pgadmin-data:/var/lib/pgadmin
-    ports:
-      - '127.0.0.1:16543:80'
-    depends_on:
-      - postgres
-
-  redis_insight:
-    image: redislabs/redisinsight:latest
-    restart: always
-    volumes:
-      - redis_insight-data:/db
-    ports:
-      - '127.0.0.1:8001:8001'
-    depends_on:
-      - redis
-
 # Storage persistency
 
 volumes:
